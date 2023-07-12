@@ -1,0 +1,3 @@
+class EmptyTokenError(Exception):
+    pass
+

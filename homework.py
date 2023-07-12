@@ -1,11 +1,19 @@
-...
+import logging
+import os
+import time
+
+import requests
+import telegram
+
+from dotenv import load_dotenv
+from exceptions import EmptyTokenError
 
 load_dotenv()
 
 
-PRACTICUM_TOKEN = ...
-TELEGRAM_TOKEN = ...
-TELEGRAM_CHAT_ID = ...
+PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
+TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
+TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 
 RETRY_PERIOD = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
@@ -19,47 +27,126 @@ HOMEWORK_VERDICTS = {
 }
 
 
+logging.basicConfig(
+    format='%(asctime)s - %(levelname)s - %(name)s - %(message)s',
+)
+
+
 def check_tokens():
-    ...
+    '''
+    Check tokens existense.
+    If at least one of them is empty raise Exception.
+
+    :raises EmptyTokenError: custom error,
+        children of Exception class
+    '''
+
+    if not (PRACTICUM_TOKEN or TELEGRAM_TOKEN or TELEGRAM_CHAT_ID):
+        logging.critical('check_tokens doesnt work')
+        raise EmptyTokenError()
 
 
 def send_message(bot, message):
-    ...
+    '''
+    Send message into TG chat.
+
+    :param bot: this is class example of telegram.Bot() class
+    :param message: this is the text string (str) we would like to send
+    '''
+
+    try:
+        bot.send_message(TELEGRAM_CHAT_ID, message)
+        logging.debug(f'send_message works, {message}')
+
+    except Exception as error:
+        logging.error(f'{error}, send_message')
+        raise Exception
 
 
 def get_api_answer(timestamp):
-    ...
+    '''
+    Send request to the ENDPOINT.
+
+    :param timestamp: this is the digit (int)
+    :returns: sdad
+    :raises Error: rasad
+    '''
+
+    payload = {'from_date': timestamp - RETRY_PERIOD}
+
+    try:
+        response = requests.get(ENDPOINT, headers=HEADERS, params=payload)
+        if response.status_code != 200:
+            raise Exception
+        return response.json()
+
+    except Exception as error:
+        logging.error(f'{error}, get_api_answer')
+        raise Exception
 
 
 def check_response(response):
-    ...
+    '''
+    Send request to the ENDPOINT.
+
+    :param timestamp: this is int
+    :returns: sdad
+    :raises Error: rasad
+    '''
+
+    if type(response) is not dict:
+        raise TypeError
+    elif type(response.get('homeworks')) is not list:
+        raise TypeError
 
 
 def parse_status(homework):
-    ...
+    '''
+    Send request to the ENDPOINT.
+
+    :param timestamp: this is int
+    :returns: sdad
+    :raises Error: rasad
+    '''
+
+    if 'status' not in homework:
+        raise Exception
+    elif homework['status'] not in HOMEWORK_VERDICTS:
+        raise Exception
+
+    if not homework.get('homework_name'):
+        raise Exception
+
+    homework_name = homework['homework_name']
+    verdict = HOMEWORK_VERDICTS[homework['status']]
 
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
 def main():
-    """Основная логика работы бота."""
+    '''
+    Main bot logic.
+    '''
 
-    ...
+    check_tokens()
 
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     timestamp = int(time.time())
 
-    ...
-
     while True:
-        try:
 
-            ...
+        try:
+            response = get_api_answer(timestamp=timestamp)
+            check_response(response=response)
+            if (homework := response['homeworks'][0]):
+                ans = parse_status(homework=homework)
+                send_message(bot=bot, message=ans)
 
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
-            ...
-        ...
+            logging.debug(message)
+
+        time.sleep(RETRY_PERIOD)
 
 
 if __name__ == '__main__':
