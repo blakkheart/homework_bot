@@ -1,3 +1,4 @@
+from http import HTTPStatus
 import logging
 import os
 import time
@@ -77,7 +78,7 @@ def get_api_answer(timestamp: int) -> dict:
 
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=payload)
-        if response.status_code != 200:
+        if response.status_code != HTTPStatus.OK:
             raise ApiError(f'cannot connect to {ENDPOINT}')
         return response.json()
 
