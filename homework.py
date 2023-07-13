@@ -46,12 +46,13 @@ def check_tokens():
         raise EmptyTokenError()
 
 
-def send_message(bot, message):
+def send_message(bot, message: str) -> None:
     '''
     Send message into TG chat.
 
     :param bot: this is class example of telegram.Bot() class
     :param message: this is the text string (str) we would like to send
+    :raises Error: rasad
     '''
 
     try:
@@ -63,12 +64,12 @@ def send_message(bot, message):
         raise Exception
 
 
-def get_api_answer(timestamp):
+def get_api_answer(timestamp: int) -> dict:
     '''
-    Send request to the ENDPOINT.
+    Send request to the <ENDPOINT> adress.
 
-    :param timestamp: this is the digit (int)
-    :returns: sdad
+    :param timestamp: this is digit (int) represent time in ms (Unix time)
+    :returns: API answer (json) converted to python dict class
     :raises Error: rasad
     '''
 
@@ -85,27 +86,27 @@ def get_api_answer(timestamp):
         raise Exception
 
 
-def check_response(response):
+def check_response(response: dict) -> None:
     '''
-    Send request to the ENDPOINT.
+    Send request to the <ENDPOINT> adress.
 
-    :param timestamp: this is int
-    :returns: sdad
-    :raises Error: rasad
+    :param response: type dict, represent information we were given via API.
+    :raises TypeError: if <response> does not match
+        YAPracticum documentation
     '''
 
     if type(response) is not dict:
-        raise TypeError
+        raise TypeError('response is not a dict type')
     elif type(response.get('homeworks')) is not list:
-        raise TypeError
+        raise TypeError('value of homeworks is not list')
 
 
-def parse_status(homework):
+def parse_status(homework: dict) -> str:
     '''
-    Send request to the ENDPOINT.
+    Acquire status from <homework> (dict).
 
-    :param timestamp: this is int
-    :returns: sdad
+    :param homework:
+    :returns: text string (str) with homework status
     :raises Error: rasad
     '''
 
@@ -126,6 +127,13 @@ def parse_status(homework):
 def main():
     '''
     Main bot logic.
+    Call api with <get_api_answer> func.
+    Check if respons is allright with <check_response> func.
+    Get homework status throught <parse_status> func.
+    Send message with <send_message> func.
+    Repeat proccess every <RETRY_PERIOD> time.
+
+    :raises Exception: if anything goes wrong
     '''
 
     check_tokens()
