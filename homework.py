@@ -1,4 +1,3 @@
-from http import HTTPStatus
 import logging
 import os
 import sys
