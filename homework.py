@@ -1,12 +1,13 @@
 import logging
 import os
-import time
 import sys
+import time
+from http import HTTPStatus
 
 import requests
 import telegram
-
 from dotenv import load_dotenv
+
 from exceptions import ApiError, EmptyTokenError, MainBodyError, ParseError
 
 load_dotenv()
@@ -44,7 +45,7 @@ def check_tokens():
     :raises EmptyTokenError: if at least one of the tokens is empty.
         Custom error, children of Exception class.
     """
-    if not (PRACTICUM_TOKEN or TELEGRAM_TOKEN or TELEGRAM_CHAT_ID):
+    if not (PRACTICUM_TOKEN and TELEGRAM_TOKEN and TELEGRAM_CHAT_ID):
         logging.critical('check_tokens func doesnt work')
         raise EmptyTokenError('tokens should not be empty!')
 
@@ -59,25 +60,25 @@ def send_message(bot, message: str) -> None:
     """
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
-        logging.debug(f'send_message works, {message}')
+        logging.debug('<send_message> func is working')
 
     except Exception as error:
-        logging.error(f'{error}, send_message')
+        logging.error(f'{error}, <send_message> is not working')
 
 
 def get_api_answer(timestamp: int) -> dict:
     """Send request to the <ENDPOINT> adress.
 
-    :param timestamp: this is digit (int) represent time in ms (Unix time).
+    :param timestamp: this is digit (int) represent time in second (Unix time).
     :returns: API answer (json) converted to python dict class.
     :raises ApiError: if <ENDPOINT> does not respond.
         Custom error, children of Exception class.
     """
-    payload = {'from_date': timestamp - RETRY_PERIOD}
+    payload = {'from_date': timestamp}
 
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=payload)
-        if response.status_code != 200:
+        if response.status_code != HTTPStatus.OK:
             raise ApiError(f'cannot connect to {ENDPOINT}')
         return response.json()
 
@@ -92,9 +93,9 @@ def check_response(response: dict) -> None:
     :param response: type dict, represent information we were given via API.
     :raises TypeError: if <response> does not match YAPracticum documentation
     """
-    if type(response) is not dict:
+    if not isinstance(response, dict):
         raise TypeError('response is not a dict type')
-    elif type(response.get('homeworks')) is not list:
+    elif not isinstance(response.get('homeworks'), list):
         raise TypeError('value of homeworks is not list')
 
 
@@ -107,18 +108,26 @@ def parse_status(homework: dict) -> str:
         or homewor_name key not in <homework>.
         Custom error, children of Exception class.
     """
-    if 'status' not in homework:
+    if not (status := homework.get('status')):
         raise ParseError('status not in homework!')
-    elif homework['status'] not in HOMEWORK_VERDICTS:
+    elif not (verdict := HOMEWORK_VERDICTS.get(status)):
         raise ParseError('status does not match legit status names')
 
-    if not homework.get('homework_name'):
+    if not (homework_name := homework.get('homework_name')):
         raise ParseError('homework_name not in homework')
 
-    homework_name = homework['homework_name']
-    verdict = HOMEWORK_VERDICTS[homework['status']]
-
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
+
+
+def get_time_stamp() -> int:
+    """Set <timestamp> equal to server time.
+
+    :returns: timestamp (int) representing time in seconds (Unix time).
+    """
+    respone = get_api_answer(timestamp=0)
+    check_response(response=respone)
+    timestamp = respone.get('current_date')
+    return timestamp
 
 
 def main():
@@ -135,24 +144,26 @@ def main():
     check_tokens()
 
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
-    timestamp = int(time.time())
+    timestamp = get_time_stamp()
 
     while True:
 
         try:
             response = get_api_answer(timestamp=timestamp)
             check_response(response=response)
-            if (homework := response['homeworks']):
+            if homework := response.get('homeworks'):
                 homework = homework[0]
                 status = parse_status(homework=homework)
                 send_message(bot=bot, message=status)
+                timestamp = response.get('current_date')
 
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             logging.debug(message)
             raise MainBodyError(f'{message}')
 
-        time.sleep(RETRY_PERIOD)
+        finally:
+            time.sleep(RETRY_PERIOD)
 
 
 if __name__ == '__main__':
