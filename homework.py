@@ -159,7 +159,7 @@ def main():
 
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
-            logging.debug(message)
+            logging.error(message)
             raise MainBodyError(f'{message}')
 
         finally:
