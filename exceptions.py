@@ -14,9 +14,3 @@ class ParseError(Exception):
     """Custom Error."""
 
     pass
-
-
-class MainBodyError(Exception):
-    """Custom Error."""
-
-    pass
