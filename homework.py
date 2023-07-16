@@ -151,16 +151,16 @@ def main():
         try:
             response = get_api_answer(timestamp=timestamp)
             check_response(response=response)
-            if homework := response.get('homeworks'):
-                homework = homework[0]
+            if homeworks := response.get('homeworks'):
+                homework = homeworks[0]
                 status = parse_status(homework=homework)
                 send_message(bot=bot, message=status)
-                timestamp = response.get('current_date')
+                timestamp = response['current_date']
 
         except Exception as error:
             message = f'Сбой в работе программы: {error}'
             logging.error(message)
-            raise MainBodyError(f'{message}')
+            send_message(bot=bot, message=message)
 
         finally:
             time.sleep(RETRY_PERIOD)
